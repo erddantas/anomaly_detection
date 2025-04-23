@@ -1,0 +1,4598 @@
+{
+  "datasets": [
+    {
+      "name": "5461f5ea",
+      "displayName": "completeness_latest_eval_global",
+      "query": "WITH LatestCompleteness AS (\n    SELECT \n        *, \n        ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY evaluated_at DESC) AS rn,\n        CASE \n            WHEN status = 'Healthy' THEN 'Complete'\n            WHEN status = 'Unhealthy' THEN 'Incomplete'\n            WHEN status = 'Unknown' THEN 'Unknown'\n        END AS converted_status,\n        TRY_CAST(additional_debug_info['daily_row_count']['actual_value'] AS INT) AS actual_row_volume, \n        TRY_CAST(additional_debug_info['daily_row_count']['expectation_threshold'] AS INT) AS predicted_row_volume_threshold\n    FROM identifier(:logging_table)\n    WHERE quality_check_type = 'Completeness'\n)\nSELECT \n    catalog, \n    schema, \n    table_name,\n    evaluated_at,\n    status,\n    converted_status,\n    quality_check_type,\n    actual_row_volume,\n    predicted_row_volume_threshold, \n    error_message, \n    downstream_impact,\n    downstream_impact.impact_level as downstream_impact_severity, \n    downstream_impact.num_downstream_tables as num_downstream_tables_impacted, \n    downstream_impact.num_queries_on_affected_tables as num_queries_impacted\nFROM LatestCompleteness\nWHERE rn = 1\nORDER BY evaluated_at DESC;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "d8053811",
+      "displayName": "completeness_latest_eval",
+      "query": "WITH LatestEval AS (\n  SELECT \n        *,\n      CASE \n            WHEN status = 'Healthy' THEN 'Complete'\n            WHEN status = 'Unhealthy' THEN 'Incomplete'\n            WHEN status = 'Unknown' THEN 'Unknown'\n        END AS converted_status,  \n      TRY_CAST(additional_debug_info['daily_row_count']['actual_value'] AS INT) AS actual_24_hour_row_volume, \n      TRY_CAST(additional_debug_info['daily_row_count']['expectation_threshold'] AS INT) AS predicted_row_volume_threshold,\n      ROW_NUMBER() OVER (PARTITION BY catalog, schema, table_name ORDER BY evaluated_at DESC) AS rn\n  FROM IDENTIFIER(:logging_table)\n  WHERE \n    evaluated_at BETWEEN :evaluated_time.min AND :evaluated_time.max\n    AND (table_name = :table_name or table_name = \"None\")\n    AND quality_check_type = 'Completeness'\n)\nSELECT \n    catalog, \n    schema, \n    table_name,\n    evaluated_at,\n    quality_check_type,\n    status,\n    converted_status,\n    actual_24_hour_row_volume, \n    predicted_row_volume_threshold, \n    error_message, \n    downstream_impact,\n    downstream_impact.impact_level as downstream_impact_severity, \n    downstream_impact.num_downstream_tables as num_downstream_tables_impacted, \n    downstream_impact.num_queries_on_affected_tables as num_queries_impacted\nFROM LatestEval\nWHERE rn = 1\nORDER BY evaluated_at DESC;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "evaluated_time",
+          "keyword": "evaluated_time",
+          "dataType": "DATETIME",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATETIME",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        },
+        {
+          "displayName": "table_name",
+          "keyword": "table_name",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "de30c6fb",
+      "displayName": "completeness_debug_for_table",
+      "query": "SELECT \n    catalog, \n    schema, \n    table_name,\n    evaluated_at,\n    quality_check_type,\n    status,\n    status as converted_status,\n    COALESCE(error_message, '') as error_message,\n    TRY_CAST(additional_debug_info['daily_row_count']['actual_value'] AS INT) as actual_24_hour_row_volume, \n    TRY_CAST(additional_debug_info['daily_row_count']['expectation_threshold'] AS INT) as predicted_row_volume_threshold\nFROM IDENTIFIER(:logging_table)\nWHERE \nevaluated_at BETWEEN :evaluated_time.min AND :evaluated_time.max\nAND table_name = :table_name\nAND quality_check_type = 'Completeness'\nORDER BY evaluated_at DESC;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "evaluated_time",
+          "keyword": "evaluated_time",
+          "dataType": "DATETIME",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATETIME",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        },
+        {
+          "displayName": "table_name",
+          "keyword": "table_name",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3d04b663",
+      "displayName": "completeness_debug_for_table_graph",
+      "query": "SELECT \n    catalog, \n    schema, \n    table_name,\n    evaluated_at,\n    quality_check_type,\n    status,\n    TRY_CAST(additional_debug_info['daily_row_count']['actual_value'] AS INT) as actual_24_hour_row_volume, \n    TRY_CAST(additional_debug_info['daily_row_count']['expectation_threshold'] AS INT) as predicted_row_volume_threshold\nFROM IDENTIFIER(:logging_table)\nWHERE \nTRY_CAST(additional_debug_info['daily_row_count']['actual_value'] AS INT) IS NOT NULL\nAND TRY_CAST(additional_debug_info['daily_row_count']['expectation_threshold'] AS INT) IS NOT NULL\nAND evaluated_at BETWEEN :evaluated_time.min AND :evaluated_time.max\nAND table_name = :table_name\nAND quality_check_type = 'Completeness'\nORDER BY evaluated_at DESC;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "evaluated_time",
+          "keyword": "evaluated_time",
+          "dataType": "DATETIME",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATETIME",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        },
+        {
+          "displayName": "table_name",
+          "keyword": "table_name",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "41c4cf40",
+      "displayName": "completeness_status_count_latest_eval",
+      "query": "WITH LatestCompleteness AS (\n    SELECT \n        *, \n        ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY evaluated_at DESC) AS rn\n    FROM IDENTIFIER(:logging_table)\n    WHERE quality_check_type = 'Completeness'\n),\nstatuses AS (\n    SELECT 'Healthy' AS status UNION ALL\n    SELECT 'Unhealthy' UNION ALL\n    SELECT 'Unknown'\n)\nSELECT s.status, COALESCE(lc.count, 0) AS count\nFROM statuses s\nLEFT JOIN (\n    SELECT status, COUNT(*) AS count\n    FROM LatestCompleteness\n    WHERE rn = 1\n    GROUP BY status\n) lc ON s.status = lc.status;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4a83bf43",
+      "displayName": "freshness_latest_eval_global",
+      "query": "WITH LatestFreshness AS (\n    SELECT \n        *, \n        ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY evaluated_at DESC) AS rn,\n        CASE \n            WHEN status = 'Healthy' THEN 'Fresh'\n            WHEN status = 'Unhealthy' THEN 'Stale'\n            ELSE status\n        END AS converted_status,\n        TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600 AS last_update,\n        TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS predicted_update_threshold,\n        TIMESTAMPADD(\n            HOUR,\n            - (TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600),\n            evaluated_at\n        ) AS last_data_update_timestamp,\n        TIMESTAMPADD(\n            HOUR,\n            - (TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600),\n            evaluated_at\n        ) AS predicted_update_timestamp\n    FROM IDENTIFIER(:logging_table)\n    WHERE quality_check_type = 'Freshness'\n)\nSELECT \n    catalog, \n    schema, \n    table_name,\n    evaluated_at,\n    quality_check_type,\n    status,\n    converted_status,\n    last_update,\n    predicted_update_threshold,\n    last_data_update_timestamp,\n    predicted_update_timestamp,\n    error_message, \n    downstream_impact,\n    downstream_impact.impact_level as downstream_impact_severity, \n    downstream_impact.num_downstream_tables as num_downstream_tables_impacted, \n    downstream_impact.num_queries_on_affected_tables as num_queries_impacted\nFROM LatestFreshness\nWHERE rn = 1\nORDER BY evaluated_at DESC;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "833aad0a",
+      "displayName": "freshness_latest_eval",
+      "query": "WITH LatestFreshness AS (\n    SELECT \n        *, \n        ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY evaluated_at DESC) AS rn,\n        CASE \n            WHEN status = 'Healthy' THEN 'Fresh'\n            WHEN status = 'Unhealthy' THEN 'Stale'\n            ELSE status\n        END AS converted_status,\n        TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600 AS last_update,\n        TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS predicted_update_threshold,\n        TIMESTAMPADD(\n            HOUR,\n            - (TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600),\n            evaluated_at\n        ) AS last_data_update_timestamp,\n        TIMESTAMPADD(\n            HOUR,\n            - (TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600),\n            evaluated_at\n        ) AS predicted_update_timestamp, \n        TRY_CAST(additional_debug_info['event_staleness']['actual_value_seconds'] AS INT) / 3600 AS actual_latency_hours, \n        TRY_CAST(additional_debug_info['event_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS predicted_latency_threshold, \n        TIMESTAMPADD(\n            HOUR, \n            - (TRY_CAST(additional_debug_info['event_staleness']['actual_value_seconds'] AS INT) / 3600), \n            evaluated_at\n        ) AS last_event_timestamp, \n        TIMESTAMPADD(\n            HOUR, \n            - (TRY_CAST(additional_debug_info['event_staleness']['expectation_threshold_seconds'] AS INT) / 3600), \n            evaluated_at\n        ) as predicted_event_timestamp\n    FROM IDENTIFIER(:logging_table)\n    WHERE quality_check_type = 'Freshness'\n      AND evaluated_at BETWEEN :evaluated_time.min AND :evaluated_time.max\n      AND (table_name = :table_name or table_name = \"None\")\n)\nSELECT \n    catalog, \n    schema, \n    table_name,\n    evaluated_at,\n    quality_check_type,\n    status,\n    converted_status,\n    last_update,\n    predicted_update_threshold,\n    last_data_update_timestamp,\n    predicted_update_timestamp,\n\n    -- Replace NULLs with empty string\n    COALESCE(CAST(actual_latency_hours AS STRING), 'N/A') AS actual_latency_hours,\n    predicted_latency_threshold,\n    COALESCE(CAST(last_event_timestamp AS STRING), 'N/A') AS last_event_timestamp,\n\n    error_message, \n    downstream_impact,\n    downstream_impact.impact_level AS downstream_impact_severity, \n    downstream_impact.num_downstream_tables AS num_downstream_tables_impacted, \n    downstream_impact.num_queries_on_affected_tables AS num_queries_impacted\nFROM LatestFreshness\nWHERE rn = 1\nORDER BY evaluated_at DESC;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "evaluated_time",
+          "keyword": "evaluated_time",
+          "dataType": "DATETIME",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATETIME",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        },
+        {
+          "displayName": "table_name",
+          "keyword": "table_name",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "256d5727",
+      "displayName": "freshness_status_count_latest_eval",
+      "query": "WITH LatestFreshness AS (\n    SELECT \n        *,\n        ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY evaluated_at DESC) AS rn\n    FROM IDENTIFIER(:logging_table)\n    WHERE quality_check_type = 'Freshness'\n),\nConverted AS (\n    SELECT \n        CASE \n            WHEN status = 'Healthy' THEN 'Fresh'\n            WHEN status = 'Unhealthy' THEN 'Stale'\n            ELSE status\n        END AS converted_status\n    FROM LatestFreshness\n    WHERE rn = 1\n),\nstatuses AS (\n    SELECT 'Fresh' AS status UNION ALL\n    SELECT 'Stale' UNION ALL\n    SELECT 'Unknown'\n)\nSELECT \n    s.status, \n    COALESCE(c.count, 0) AS count\nFROM statuses s\nLEFT JOIN (\n    SELECT \n        converted_status AS status,\n        COUNT(*) AS count\n    FROM Converted\n    GROUP BY converted_status\n) c ON s.status = c.status;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "e8dd7ecc",
+      "displayName": "freshness_debug_for_table",
+      "query": "SELECT \n    catalog, \n    schema, \n    table_name,\n    evaluated_at,\n    status,\n    CASE \n        WHEN status = 'Fresh' THEN 'Healthy'\n        WHEN status = 'Stale' THEN 'Unhealthy'\n        ELSE status\n    END AS converted_status,\n    COALESCE(error_message, '') as error_message,\n    -- hours since last update\n    TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600 AS hours_since_last_update, \n    -- predicted threshold for hours since last update\n    TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS predicted_update_threshold,\n    TIMESTAMPADD(HOUR, - (TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600), evaluated_at) AS last_data_update_timestamp, \n    TIMESTAMPADD(HOUR, - (TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600), evaluated_at) AS predicted_update_threshold_timestamp, \n        -- Replace NULLs with empty strings\n    COALESCE(CAST(TRY_CAST(additional_debug_info['event_staleness']['actual_value_seconds'] AS INT) / 3600 AS STRING), '') AS actual_latency_hours,\n    COALESCE(CAST(TRY_CAST(additional_debug_info['event_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS STRING), '') AS predicted_latency_threshold,\n    TRY_CAST(additional_debug_info['event_staleness']['actual_value_seconds'] AS INT) / 3600 AS actual_latency_hours_unformatted,\n    TRY_CAST(additional_debug_info['event_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS predicted_latency_threshold_unformatted,\n    COALESCE(\n        CAST(\n            TIMESTAMPADD(\n                HOUR, \n                - (TRY_CAST(additional_debug_info['event_staleness']['actual_value_seconds'] AS INT) / 3600), \n                evaluated_at\n            ) AS STRING\n        ), ''\n    ) AS last_event_timestamp,\n\n    COALESCE(\n        CAST(\n            TIMESTAMPADD(\n                HOUR, \n                - (TRY_CAST(additional_debug_info['event_staleness']['expectation_threshold_seconds'] AS INT) / 3600), \n                evaluated_at\n            ) AS STRING\n        ), ''\n    ) AS predicted_event_timestamp\nFROM IDENTIFIER(:logging_table)\nWHERE \n    evaluated_at BETWEEN :evaluated_time.min AND :evaluated_time.max\n    AND table_name = :table_name\n    AND quality_check_type = 'Freshness'\nORDER BY evaluated_at DESC;",
+      "parameters": [
+        {
+          "displayName": "evaluated_time",
+          "keyword": "evaluated_time",
+          "dataType": "DATETIME",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATETIME",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        },
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "table_name",
+          "keyword": "table_name",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6503836f",
+      "displayName": "freshness_debug_for_table_graph",
+      "query": "SELECT \n    catalog, \n    schema, \n    table_name,\n    evaluated_at,\n    status,\n    -- hours since last update\n    TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600 AS hours_since_last_update, \n    -- predicted threshold for hours since last update\n    TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS predicted_update_threshold,\n    TIMESTAMPADD(HOUR, - (TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600), evaluated_at) AS last_data_update_timestamp, \n    TIMESTAMPADD(HOUR, - (TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600), evaluated_at) AS predicted_update_threshold_timestamp, \n        -- Replace NULLs with empty strings\n    COALESCE(CAST(TRY_CAST(additional_debug_info['event_staleness']['actual_value_seconds'] AS INT) / 3600 AS STRING), '') AS actual_latency_hours,\n    COALESCE(CAST(TRY_CAST(additional_debug_info['event_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS STRING), '') AS predicted_latency_threshold,\n    TRY_CAST(additional_debug_info['event_staleness']['actual_value_seconds'] AS INT) / 3600 AS actual_latency_hours_unformatted,\n    TRY_CAST(additional_debug_info['event_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS predicted_latency_threshold_unformatted,\n    COALESCE(\n        CAST(\n            TIMESTAMPADD(\n                HOUR, \n                - (TRY_CAST(additional_debug_info['event_staleness']['actual_value_seconds'] AS INT) / 3600), \n                evaluated_at\n            ) AS STRING\n        ), ''\n    ) AS last_event_timestamp,\n\n    COALESCE(\n        CAST(\n            TIMESTAMPADD(\n                HOUR, \n                - (TRY_CAST(additional_debug_info['event_staleness']['expectation_threshold_seconds'] AS INT) / 3600), \n                evaluated_at\n            ) AS STRING\n        ), ''\n    ) AS predicted_event_timestamp\nFROM IDENTIFIER(:logging_table)\nWHERE \nTRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) IS NOT NULL\nAND TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) IS NOT NULL\nAND evaluated_at BETWEEN :evaluated_time.min AND :evaluated_time.max\nAND table_name = :table_name\nAND quality_check_type = 'Freshness'\nORDER BY evaluated_at DESC;",
+      "parameters": [
+        {
+          "displayName": "evaluated_time",
+          "keyword": "evaluated_time",
+          "dataType": "DATETIME",
+          "complexType": "RANGE",
+          "defaultSelection": {
+            "range": {
+              "dataType": "DATETIME",
+              "min": {
+                "value": "now-30d/d"
+              },
+              "max": {
+                "value": "now/d"
+              }
+            }
+          }
+        },
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "table_name",
+          "keyword": "table_name",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "0edc79ec",
+      "displayName": "all_records_latest_eval",
+      "query": "WITH LatestChecks AS (\n    SELECT \n        CONCAT(catalog, \".\", schema, \".\", table_name) as full_table_name,\n        evaluated_at,\n        quality_check_type as check_type,\n        status,\n        table_lineage_link,\n        -- Converted status based on type\n        CASE \n            WHEN quality_check_type = 'Freshness' AND status = 'Fresh' THEN 'Healthy'\n            WHEN quality_check_type = 'Freshness' AND status = 'Stale' THEN 'Unhealthy'\n            ELSE status\n        END AS converted_status,\n\n        -- Completeness-specific fields\n        TRY_CAST(additional_debug_info['daily_row_count']['actual_value'] AS INT) AS actual_row_volume, \n        TRY_CAST(additional_debug_info['daily_row_count']['expectation_threshold'] AS INT) AS predicted_row_volume_threshold,\n\n        -- Freshness-specific fields\n        TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600 AS last_update,\n        TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS predicted_update_threshold,\n        TIMESTAMPADD(\n            HOUR,\n            - (TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600),\n            evaluated_at\n        ) AS last_data_update_timestamp,\n        TIMESTAMPADD(\n            HOUR,\n            - (TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600),\n            evaluated_at\n        ) AS predicted_update_timestamp,\n\n        COALESCE(error_message, '') AS error_message,\n        downstream_impact,\n        COALESCE(CAST(downstream_impact.impact_level AS STRING), '') AS downstream_impact_severity,\n        COALESCE(CAST(downstream_impact.num_downstream_tables AS STRING), '') AS num_downstream_tables_impacted,\n        COALESCE(CAST(downstream_impact.num_queries_on_affected_tables AS STRING), '') AS num_queries_impacted, \n\n        -- Sorting helpers\n        CASE \n            WHEN status = 'Unhealthy' THEN 1\n            WHEN status = 'Healthy' THEN 2\n            WHEN status = 'Unknown' THEN 3\n            ELSE 4\n        END AS status_sort_order,\n\n        CASE \n            WHEN downstream_impact.impact_level = 4 THEN 'Very High'\n            WHEN downstream_impact.impact_level = 3 THEN 'High'\n            WHEN downstream_impact.impact_level = 2 THEN 'Medium'\n            WHEN downstream_impact.impact_level = 1 THEN 'Low'\n            ELSE \"\"\n        END AS downstream_impact_severity_label,\n        -- Human-readable reason\n        CASE \n            WHEN quality_check_type = 'Freshness' AND status = 'Unhealthy' THEN \n                CONCAT(\n                    'The table was predicted to be updated by ', \n                    CAST(predicted_update_timestamp AS STRING), \n                    ', but the last update was at ', \n                    CAST(last_data_update_timestamp AS STRING)\n                )\n            WHEN quality_check_type = 'Completeness' AND status = 'Unhealthy' THEN \n                CONCAT(\n                    'At least ',\n                    predicted_row_volume_threshold, \n                    ' rows were predicted to be affected in the last 24 hours, but only ', \n                    actual_row_volume, \n                    ' rows were affected.'\n                )\n            WHEN converted_status = 'Unknown' THEN error_message\n            ELSE \"\"\n        END AS reason,\n\n        ROW_NUMBER() OVER (\n            PARTITION BY table_name, quality_check_type \n            ORDER BY evaluated_at DESC\n        ) AS rn\n    FROM IDENTIFIER(:`logging_table`)\n    WHERE quality_check_type IN ('Completeness', 'Freshness')\n      AND (table_name = :table_name OR :table_name = 'All tables')\n      AND (catalog = :catalog OR :catalog = 'All catalogs')\n      AND (schema = :schema OR :schema = 'All schemas')\n)\nSELECT \n    evaluated_at, \n    full_table_name as table_name, \n    check_type, \n    converted_status as status, \n    downstream_impact_severity_label, \n    num_queries_impacted, \n    num_downstream_tables_impacted, \n    reason,\n    table_lineage_link\nFROM LatestChecks\nWHERE rn = 1\n  AND (check_type = :quality_check_type OR :quality_check_type = 'All checks')\n  AND (status = :status OR :status = 'All statuses')\nORDER BY \n  status_sort_order ASC,  -- Unhealthy first\n  downstream_impact.impact_level DESC,  -- Highest impact first\n  evaluated_at DESC;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "table_name",
+          "keyword": "table_name",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "All tables"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "catalog",
+          "keyword": "catalog",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "All catalogs"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "schema",
+          "keyword": "schema",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "All schemas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "quality_check_type",
+          "keyword": "quality_check_type",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "All checks"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "status",
+          "keyword": "status",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "All statuses"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "723ab568",
+      "displayName": "metrics",
+      "query": "SELECT 'Completeness' AS metric\nUNION ALL\nSELECT 'Freshness'\nUNION ALL\nSELECT 'All checks';"
+    },
+    {
+      "name": "773aa4aa",
+      "displayName": "statuses",
+      "query": "SELECT 'Healthy' AS metric\nUNION ALL\nSELECT 'Unhealthy'\nUNION ALL\nSELECT 'Unknown'\nUNION ALL\nSELECT \"All statuses\";"
+    },
+    {
+      "name": "51c2afcd",
+      "displayName": "tables",
+      "query": "select table_name from IDENTIFIER(:logging_table)",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "0883446b",
+      "displayName": "percent_healthy_over_time",
+      "query": "WITH LatestDailyCheck AS (\n    SELECT\n        catalog,\n        schema,\n        table_name,\n        quality_check_type,\n        status,\n        CAST(evaluated_at AS DATE) AS evaluation_date,\n        ROW_NUMBER() OVER (\n            PARTITION BY CAST(evaluated_at AS DATE), table_name, quality_check_type\n            ORDER BY evaluated_at DESC\n        ) AS rn\n    FROM IDENTIFIER(:`logging_table`)\n    WHERE quality_check_type IN ('Completeness', 'Freshness')\n)\n, DailyAggregates AS (\n    SELECT\n        evaluation_date,\n        quality_check_type,\n        COUNT(*) AS total_tables,\n        COUNT_IF(status = 'Healthy') AS healthy_tables\n    FROM LatestDailyCheck\n    WHERE rn = 1\n    GROUP BY evaluation_date, quality_check_type\n)\nSELECT\n    evaluation_date,\n    quality_check_type,\n    healthy_tables,\n    total_tables,\n    ROUND(100.0 * healthy_tables / total_tables, 2) AS percent_healthy\nFROM DailyAggregates\nORDER BY evaluation_date, quality_check_type;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6a0f2ffc",
+      "displayName": "schema_latest_eval_global",
+      "query": "WITH LatestFreshness AS (\n    SELECT * FROM (\n        SELECT \n            *, \n            ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY evaluated_at DESC) AS rn,\n            DATE(evaluated_at) AS eval_date,\n            CASE \n                WHEN status = 'Fresh' THEN 'Healthy'\n                WHEN status = 'Stale' THEN 'Unhealthy'\n                ELSE status\n            END AS converted_status\n        FROM IDENTIFIER(:logging_table)\n        WHERE quality_check_type = 'Freshness'\n    ) subquery\n    WHERE rn = 1\n),\nLatestCompleteness AS (\n    SELECT * FROM (\n        SELECT \n            *, \n            ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY evaluated_at DESC) AS rn,\n            DATE(evaluated_at) AS eval_date,\n            status AS converted_status\n        FROM IDENTIFIER(:logging_table)\n        WHERE quality_check_type = 'Completeness'\n    ) subquery\n    WHERE rn = 1\n),\nCombinedStatus AS (\n    SELECT \n        COALESCE(f.table_name, c.table_name) AS table_name,\n        f.evaluated_at AS freshness_evaluated_at,\n        c.evaluated_at AS completeness_evaluated_at,\n        f.eval_date AS eval_date,\n        f.converted_status AS freshness_status,\n        c.converted_status AS completeness_status,\n        CASE \n            WHEN f.converted_status = 'Unhealthy' OR c.converted_status = 'Unhealthy' THEN 'Unhealthy'\n            WHEN f.converted_status = 'Unknown' OR c.converted_status = 'Unknown' THEN 'Unknown'\n            WHEN f.converted_status IS NULL THEN c.converted_status\n            WHEN c.converted_status IS NULL THEN f.converted_status\n            ELSE 'Healthy'\n        END AS final_status\n\n    FROM LatestFreshness f\n    FULL OUTER JOIN LatestCompleteness c \n        ON f.table_name = c.table_name\n    AND f.eval_date = c.eval_date\n),\nstatuses AS (\n    SELECT 'Healthy' AS status UNION ALL\n    SELECT 'Unhealthy' UNION ALL\n    SELECT 'Unknown'\n)\nSELECT \n    s.status, \n    COALESCE(c.count, 0) AS count,\n    ROUND(COALESCE(c.count, 0) / (SELECT Count(*) FROM CombinedStatus), 4) AS percentage\nFROM statuses s\nLEFT JOIN (\n    SELECT\n        final_status AS status,\n        COUNT(*) AS count\n    FROM CombinedStatus\n    GROUP BY final_status\n) c ON s.status = c.status;\n",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "67d6a2ab",
+      "displayName": "static_table_cleanup",
+      "query": "WITH LatestChecks AS (\n    SELECT \n        CONCAT(catalog, \".\", schema, \".\", table_name) as full_table_name,\n        evaluated_at,\n        quality_check_type,\n        status,\n        table_lineage_link,\n        -- Converted status based on type\n        CASE \n            WHEN quality_check_type = 'Completeness' AND status = 'Healthy' THEN 'Complete'\n            WHEN quality_check_type = 'Completeness' AND status = 'Unhealthy' THEN 'Incomplete'\n            WHEN quality_check_type = 'Freshness' AND status = 'Healthy' THEN 'Fresh'\n            WHEN quality_check_type = 'Freshness' AND status = 'Unhealthy' THEN 'Stale'\n            ELSE status\n        END AS converted_status,\n\n        -- Completeness-specific fields\n        TRY_CAST(additional_debug_info['daily_row_count']['actual_value'] AS INT) AS actual_row_volume, \n        TRY_CAST(additional_debug_info['daily_row_count']['expectation_threshold'] AS INT) AS predicted_row_volume_threshold,\n\n        -- Freshness-specific fields\n        TRY_CAST(additional_debug_info['commit_staleness']['is_static'] AS STRING) AS is_static,\n        TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600 AS last_update,\n        TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600 AS predicted_update_threshold,\n        TIMESTAMPADD(\n            HOUR,\n            - (TRY_CAST(additional_debug_info['commit_staleness']['actual_value_seconds'] AS INT) / 3600),\n            evaluated_at\n        ) AS last_data_update_timestamp,\n        TIMESTAMPADD(\n            HOUR,\n            - (TRY_CAST(additional_debug_info['commit_staleness']['expectation_threshold_seconds'] AS INT) / 3600),\n            evaluated_at\n        ) AS predicted_update_timestamp,\n\n        COALESCE(error_message, '') AS error_message,\n        downstream_impact,\n        COALESCE(CAST(downstream_impact.impact_level AS STRING), '') AS downstream_impact_severity,\n        COALESCE(CAST(downstream_impact.num_downstream_tables AS STRING), '') AS num_downstream_tables_impacted,\n        COALESCE(CAST(downstream_impact.num_queries_on_affected_tables AS STRING), '') AS num_queries_impacted, \n\n        -- Sorting helpers\n        CASE \n            WHEN status = 'Unhealthy' THEN 1\n            WHEN status = 'Healthy' THEN 2\n            WHEN status = 'Unknown' THEN 3\n            ELSE 4\n        END AS status_sort_order,\n\n        CASE \n            WHEN downstream_impact.impact_level = 4 THEN 'Very High'\n            WHEN downstream_impact.impact_level = 3 THEN 'High'\n            WHEN downstream_impact.impact_level = 2 THEN 'Medium'\n            WHEN downstream_impact.impact_level = 1 THEN 'Low'\n            ELSE \"\"\n        END AS downstream_impact_severity_label,\n        -- Human-readable reason\n        CASE \n            WHEN quality_check_type = 'Freshness' AND status = 'Unhealthy' THEN \n                CONCAT(\n                    'The table was predicted to be updated by ', \n                    CAST(predicted_update_timestamp AS STRING), \n                    ', but the last update was at ', \n                    CAST(last_data_update_timestamp AS STRING)\n                )\n            WHEN quality_check_type = 'Completeness' AND status = 'Unhealthy' THEN \n                CONCAT(\n                    'The last update to the table was predicted to affect at least ', \n                    predicted_row_volume_threshold, \n                    ' rows, but it only affected ', \n                    actual_row_volume, \n                    ' rows'\n                )\n            ELSE \"\"\n        END AS reason,\n\n        ROW_NUMBER() OVER (\n            PARTITION BY table_name, quality_check_type \n            ORDER BY evaluated_at DESC\n        ) AS rn\n    FROM IDENTIFIER(:`logging_table`)\n    WHERE quality_check_type IN ('Completeness', 'Freshness')\n      AND (table_name = :table_name OR :table_name = 'All tables')\n      AND (catalog = :catalog OR :catalog = 'All catalogs')\n      AND (schema = :schema OR :schema = 'All schemas')\n)\nSELECT evaluated_at, full_table_name as table_name, last_data_update_timestamp\nFROM LatestChecks\nWHERE rn = 1\n  AND is_static = 'true' \nORDER BY \n  last_data_update_timestamp ASC, \n  evaluated_at DESC;",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "table_name",
+          "keyword": "table_name",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "All tables"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "catalog",
+          "keyword": "catalog",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "All catalogs"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "schema",
+          "keyword": "schema",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "All schemas"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "b53c4849",
+      "displayName": "warning",
+      "query": "SELECT \"Logging table for your schema(s) is required\" AS warning"
+    },
+    {
+      "name": "d59c15e3",
+      "displayName": "logging_table_name",
+      "query": "select :logging_table as logging_table_name",
+      "parameters": [
+        {
+          "displayName": "logging_table",
+          "keyword": "logging_table",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "None"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1652eb92",
+      "displayName": "warning_table_required",
+      "query": "SELECT \"Table name is required\" AS warning"
+    }
+  ],
+  "pages": [
+    {
+      "name": "quality-overview",
+      "displayName": "Quality Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "9838a286",
+            "textbox_spec": "## How to use this dashboard\nThere are two tabs: `Quality Overview` (the current tab) and `Table Quality Details`\n- `Quality Overview` provides a holistic view of the latest data quality across all tables.\n-  `Table Quality Details` shows why a specific table is marked as healthy or unhealthy.\n"
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "5a7d2707",
+            "textbox_spec": "# Databricks Anomaly Detection"
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "quality-overview-logging-table-name",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c41834ec1695b449435_logging_table",
+                "query": {
+                  "datasetName": "41c4cf40",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cb6892abe69a0a5ef44_logging_table",
+                "query": {
+                  "datasetName": "256d5727",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1af0b1770003035d17d2_logging_table",
+                "query": {
+                  "datasetName": "5461f5ea",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c60bd0d3f9145ed043c_logging_table",
+                "query": {
+                  "datasetName": "4a83bf43",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1d1896bc99fd9e99d535_logging_table",
+                "query": {
+                  "datasetName": "0edc79ec",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1d8fbcddd910671c444e_logging_table",
+                "query": {
+                  "datasetName": "0883446b",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1dca9b4b2c31be6f7747_logging_table",
+                "query": {
+                  "datasetName": "67d6a2ab",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1dac8b3eb1e6644b7274_logging_table",
+                "query": {
+                  "datasetName": "6a0f2ffc",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c41834ec1695b449435_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cb6892abe69a0a5ef44_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1af0b1770003035d17d2_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c60bd0d3f9145ed043c_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1d1896bc99fd9e99d535_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1d8fbcddd910671c444e_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1dca9b4b2c31be6f7747_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1dac8b3eb1e6644b7274_logging_table"
+                  }
+                ]
+              },
+              "selection": {
+                "defaultSelection": {
+                  "values": {
+                    "dataType": "STRING",
+                    "values": [
+                      {
+                        "value": "None"
+                      }
+                    ]
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Logging table name",
+                "showDescription": true,
+                "description": "Input required"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 4,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "fe7f94e9",
+            "textbox_spec": "## Schema Overview\nUnderstand the latest data quality across all tables in your schema(s).\n- A table is  \"Healthy\" if it passes all quality checks.\n- A table is  \"Unhealthy\" if it fails any quality check.\n- A table is  \"Unknown\" if any quality check is Unknown.\n"
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "17549e29",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "4a83bf43",
+                  "fields": [
+                    {
+                      "name": "count(converted_status)",
+                      "expression": "COUNT(`converted_status`)"
+                    },
+                    {
+                      "name": "converted_status",
+                      "expression": "`converted_status`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "count(converted_status)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Num tables"
+                },
+                "color": {
+                  "fieldName": "converted_status",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Healthy",
+                        "color": "#00A972"
+                      },
+                      {
+                        "value": "Fresh",
+                        "color": "#00A972"
+                      },
+                      {
+                        "value": "Stale",
+                        "color": "#FF3621"
+                      },
+                      {
+                        "value": "Unknown",
+                        "color": "#FFAB00"
+                      },
+                      {
+                        "value": "Unhealthy",
+                        "color": "#FF3621"
+                      }
+                    ]
+                  },
+                  "legend": {
+                    "hide": false,
+                    "hideTitle": false
+                  },
+                  "displayName": "Status"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Freshness Overview"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 11,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "73fc0f26",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5461f5ea",
+                  "fields": [
+                    {
+                      "name": "count(converted_status)",
+                      "expression": "COUNT(`converted_status`)"
+                    },
+                    {
+                      "name": "converted_status",
+                      "expression": "`converted_status`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "count(converted_status)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Num tables"
+                },
+                "color": {
+                  "fieldName": "converted_status",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Healthy",
+                        "color": "#00A972"
+                      },
+                      {
+                        "value": "Complete",
+                        "color": "#00A972"
+                      },
+                      {
+                        "value": "Incomplete",
+                        "color": "#FF3621"
+                      },
+                      {
+                        "value": "Unknown",
+                        "color": "#FFAB00"
+                      },
+                      {
+                        "value": "Unhealthy",
+                        "color": "#FF3621"
+                      }
+                    ]
+                  },
+                  "displayName": "Status"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Completeness Overview"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 11,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "d00b15dd",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "0edc79ec",
+                  "fields": [
+                    {
+                      "name": "evaluated_at",
+                      "expression": "`evaluated_at`"
+                    },
+                    {
+                      "name": "table_name",
+                      "expression": "`table_name`"
+                    },
+                    {
+                      "name": "check_type",
+                      "expression": "`check_type`"
+                    },
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    },
+                    {
+                      "name": "reason",
+                      "expression": "`reason`"
+                    },
+                    {
+                      "name": "downstream_impact_severity_label",
+                      "expression": "`downstream_impact_severity_label`"
+                    },
+                    {
+                      "name": "num_queries_impacted",
+                      "expression": "`num_queries_impacted`"
+                    },
+                    {
+                      "name": "num_downstream_tables_impacted",
+                      "expression": "`num_downstream_tables_impacted`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "evaluated_at",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm z",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 0,
+                    "title": "evaluated_at",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "evaluated_at"
+                  },
+                  {
+                    "fieldName": "table_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 1,
+                    "title": "table_name",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "defaultColumnWidth": 500,
+                    "displayName": "table_name"
+                  },
+                  {
+                    "fieldName": "check_type",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 2,
+                    "title": "check_type",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "check_type"
+                  },
+                  {
+                    "fieldName": "status",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 3,
+                    "title": "status",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "cellFormat": {
+                      "default": {
+                        "foregroundColor": null
+                      },
+                      "rules": [
+                        {
+                          "if": {
+                            "column": "status",
+                            "fn": "=",
+                            "literal": "Unhealthy"
+                          },
+                          "value": {
+                            "foregroundColor": "#FF3621"
+                          }
+                        },
+                        {
+                          "if": {
+                            "column": "status",
+                            "fn": "=",
+                            "literal": "Healthy"
+                          },
+                          "value": {
+                            "foregroundColor": "#00A972"
+                          }
+                        },
+                        {
+                          "if": {
+                            "column": "status",
+                            "fn": "=",
+                            "literal": "Unknown"
+                          },
+                          "value": {
+                            "foregroundColor": "#FFAB00"
+                          }
+                        }
+                      ]
+                    },
+                    "displayName": "status"
+                  },
+                  {
+                    "fieldName": "reason",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 4,
+                    "title": "reason",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "cellFormat": {
+                      "default": {
+                        "foregroundColor": null
+                      },
+                      "rules": []
+                    },
+                    "defaultColumnWidth": 300,
+                    "displayName": "reason"
+                  },
+                  {
+                    "fieldName": "downstream_impact_severity_label",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 5,
+                    "title": "impact",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "downstream_impact_severity_label"
+                  },
+                  {
+                    "fieldName": "num_queries_impacted",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 6,
+                    "title": "num_queries_impacted",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "num_queries_impacted"
+                  },
+                  {
+                    "fieldName": "num_downstream_tables_impacted",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 7,
+                    "title": "num_downstream_tables_impacted",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "num_downstream_tables_impacted"
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "table_lineage_link",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 8,
+                  "title": "table_lineage_link",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "firstNFrozenColumns": 4,
+              "frame": {
+                "showTitle": false,
+                "title": "Incidents"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 25,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "3fa1e425",
+            "textbox_spec": "## Recent Incidents\nIdentify unhealthy tables in the last run. \n"
+          },
+          "position": {
+            "x": 0,
+            "y": 22,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "811b54be",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "256d5727",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`status` IN ('Stale')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "style": {
+                    "color": "#FF3621"
+                  },
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# Stale tables"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "e6e2b233",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "256d5727",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`status` IN ('Fresh')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "style": {
+                    "color": "#00A972"
+                  },
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# Fresh tables"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "b0c38915",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "256d5727",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`status` IN ('Unknown')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "style": {
+                    "color": "#FFAB00"
+                  },
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# Unknown tables"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "af4dff57",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "41c4cf40",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`status` IN ('Unhealthy')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "style": {
+                    "color": "#FF3621"
+                  },
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# Incomplete tables",
+                "showDescription": false,
+                "description": ""
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 13,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "56f5f79d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "41c4cf40",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`status` IN ('Healthy')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "style": {
+                    "color": "#00A972"
+                  },
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# Complete tables"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 11,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "34da4389",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "41c4cf40",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`status` IN ('Unknown')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "style": {
+                    "color": "#FFAB00"
+                  },
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# Unknown tables"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 15,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "b1a6f99c",
+            "textbox_spec": "## Freshness"
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "471a2304",
+            "textbox_spec": "## Completeness\n"
+          },
+          "position": {
+            "x": 3,
+            "y": 10,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "9336dc90",
+            "queries": [
+              {
+                "name": "dashboards/01f00e6e4eb813948f318b5442d3fdbc/datasets/01f00e71128c1522a870644ac936ca71_metric",
+                "query": {
+                  "datasetName": "723ab568",
+                  "fields": [
+                    {
+                      "name": "metric",
+                      "expression": "`metric`"
+                    },
+                    {
+                      "name": "metric_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f00e6e4eb813948f318b5442d3fdbc/datasets/01f00e6e4eb81cc58ea904b4e7bea7db_quality_check_type",
+                "query": {
+                  "datasetName": "0edc79ec",
+                  "parameters": [
+                    {
+                      "name": "quality_check_type",
+                      "keyword": "quality_check_type"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "quality_check_type",
+                    "queryName": "parameter_dashboards/01f00e6e4eb813948f318b5442d3fdbc/datasets/01f00e6e4eb81cc58ea904b4e7bea7db_quality_check_type"
+                  },
+                  {
+                    "fieldName": "metric",
+                    "displayName": "metric",
+                    "queryName": "dashboards/01f00e6e4eb813948f318b5442d3fdbc/datasets/01f00e71128c1522a870644ac936ca71_metric"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Quality Check Type"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 24,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "e37ccc3f",
+            "queries": [
+              {
+                "name": "dashboards/01f00e90f8731561ac3fd81e23565b97/datasets/01f00e90f8731dd2843ec7fc7ebf1ee4_metric",
+                "query": {
+                  "datasetName": "773aa4aa",
+                  "fields": [
+                    {
+                      "name": "metric",
+                      "expression": "`metric`"
+                    },
+                    {
+                      "name": "metric_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f00e90f8731561ac3fd81e23565b97/datasets/01f00e90f8731d9281ba5fc686b6784a_status",
+                "query": {
+                  "datasetName": "0edc79ec",
+                  "parameters": [
+                    {
+                      "name": "status",
+                      "keyword": "status"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "status",
+                    "queryName": "parameter_dashboards/01f00e90f8731561ac3fd81e23565b97/datasets/01f00e90f8731d9281ba5fc686b6784a_status"
+                  },
+                  {
+                    "fieldName": "metric",
+                    "displayName": "metric",
+                    "queryName": "dashboards/01f00e90f8731561ac3fd81e23565b97/datasets/01f00e90f8731dd2843ec7fc7ebf1ee4_metric"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Status"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 24,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "abf760b7",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "0883446b",
+                  "fields": [
+                    {
+                      "name": "evaluation_date",
+                      "expression": "`evaluation_date`"
+                    },
+                    {
+                      "name": "percent_healthy",
+                      "expression": "`percent_healthy`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`quality_check_type` IN ('Freshness')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "evaluation_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "evaluation date "
+                },
+                "y": {
+                  "fieldName": "percent_healthy",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "% fresh tables "
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Freshness over time"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "73855279",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "0883446b",
+                  "fields": [
+                    {
+                      "name": "evaluation_date",
+                      "expression": "`evaluation_date`"
+                    },
+                    {
+                      "name": "percent_healthy",
+                      "expression": "`percent_healthy`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`quality_check_type` IN ('Completeness')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "evaluation_date",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "evaluation date "
+                },
+                "y": {
+                  "fieldName": "percent_healthy",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "% complete tables "
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Completeness over time"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 17,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "e0d4ca91",
+            "textbox_spec": "## Breakdown of Quality Checks\nUnderstand the latest data quality status for each quality check. "
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "a0d6f9d2",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6a0f2ffc",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`status` IN ('Healthy')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "style": {
+                    "color": "#00A972"
+                  },
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# Healthy tables"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "54be92e0",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6a0f2ffc",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`status` IN ('Unhealthy')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "style": {
+                    "color": "#FF3621"
+                  },
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# Unhealthy tables"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "916a7d15",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6a0f2ffc",
+                  "fields": [
+                    {
+                      "name": "sum(count)",
+                      "expression": "SUM(`count`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`status` IN ('Unknown')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(count)",
+                  "style": {
+                    "color": "#FFAB00"
+                  },
+                  "displayName": "Sum of count"
+                }
+              },
+              "frame": {
+                "title": "# Unknown tables",
+                "showTitle": true
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 5,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "1b7f5bde",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6a0f2ffc",
+                  "fields": [
+                    {
+                      "name": "percentage",
+                      "expression": "`percentage`"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`status` IN ('Healthy')"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "percentage",
+                  "style": {
+                    "color": "#00A972"
+                  },
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "displayName": "percentage"
+                }
+              },
+              "frame": {
+                "title": "% Healthy tables",
+                "showTitle": true,
+                "showDescription": false,
+                "description": " A table is healthy if is both fresh and complete"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "8407ea2f",
+            "textbox_spec": "## Static Tables List\nIdentify tables that have not been updated in a long time. Consider cleaning them up if they're no longer needed."
+          },
+          "position": {
+            "x": 0,
+            "y": 32,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "fbc4925b",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "67d6a2ab",
+                  "fields": [
+                    {
+                      "name": "evaluated_at",
+                      "expression": "`evaluated_at`"
+                    },
+                    {
+                      "name": "table_name",
+                      "expression": "`table_name`"
+                    },
+                    {
+                      "name": "last_data_update_timestamp",
+                      "expression": "`last_data_update_timestamp`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "evaluated_at",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm z",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100000,
+                    "title": "evaluated_at",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "cellFormat": {
+                      "default": {
+                        "foregroundColor": null
+                      },
+                      "rules": []
+                    },
+                    "displayName": "evaluated_at"
+                  },
+                  {
+                    "fieldName": "table_name",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 100001,
+                    "title": "table_name",
+                    "allowSearch": true,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "table_name"
+                  },
+                  {
+                    "fieldName": "last_data_update_timestamp",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm z",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 100002,
+                    "title": "last_data_update_timestamp",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "last_data_update_timestamp"
+                  }
+                ]
+              },
+              "invisibleColumns": [],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": false,
+                "title": "Incidents"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 34,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "1ea8db97",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "b53c4849",
+                  "fields": [
+                    {
+                      "name": "warning",
+                      "expression": "`warning`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "warning",
+                  "style": {
+                    "color": "#FFAB00"
+                  },
+                  "displayName": "warning"
+                }
+              },
+              "frame": {
+                "showTitle": false
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 2,
+            "height": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "table-quality-details",
+      "displayName": "Table Quality Details",
+      "layout": [
+        {
+          "widget": {
+            "name": "9dcb5f4d",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6503836f",
+                  "fields": [
+                    {
+                      "name": "evaluated_at",
+                      "expression": "`evaluated_at`"
+                    },
+                    {
+                      "name": "hours_since_last_update",
+                      "expression": "`hours_since_last_update`"
+                    },
+                    {
+                      "name": "predicted_update_threshold",
+                      "expression": "`predicted_update_threshold`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "combo",
+              "encodings": {
+                "x": {
+                  "fieldName": "evaluated_at",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "evaluated_at"
+                },
+                "y": {
+                  "primary": {
+                    "fields": []
+                  },
+                  "secondary": {
+                    "fields": [
+                      {
+                        "fieldName": "hours_since_last_update",
+                        "displayName": "hours since last update"
+                      },
+                      {
+                        "fieldName": "predicted_update_threshold",
+                        "displayName": "predicted update threshold"
+                      }
+                    ]
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "hideTitle": false,
+                    "title": "Hours"
+                  }
+                }
+              },
+              "mark": {
+                "colors": [
+                  "#077A9D",
+                  "#FF3621",
+                  "#00A972",
+                  "#FF3621",
+                  "#8BCAE7",
+                  "#AB4057",
+                  "#99DDB4",
+                  "#FCA4A1",
+                  "#919191",
+                  "#BF7080"
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Commit freshness over time"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 4,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "950d8abb",
+            "textbox_spec": "# Table Quality Details "
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "fc14a50b",
+            "textbox_spec": "## Freshness\nMonitors how recently a table has been updated. This table is considered fresh when the the last update falls below the predicted threshold. "
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "36a90e1f",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "833aad0a",
+                  "fields": [
+                    {
+                      "name": "last_update",
+                      "expression": "`last_update`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "last_update",
+                  "displayName": "last_update"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Hours since last update",
+                "showDescription": true,
+                "description": "As of last evaluation"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "9533a53c",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "833aad0a",
+                  "fields": [
+                    {
+                      "name": "last_data_update_timestamp",
+                      "expression": "`last_data_update_timestamp`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "last_data_update_timestamp",
+                  "displayName": "last_data_update_timestamp"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Last update ",
+                "showDescription": true,
+                "description": "As of last evaluation"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "020ab46c",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "833aad0a",
+                  "fields": [
+                    {
+                      "name": "converted_status",
+                      "expression": "`converted_status`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "converted_status",
+                  "style": {
+                    "rules": [
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "Fresh"
+                          }
+                        },
+                        "color": "#00A972"
+                      },
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "Stale"
+                          }
+                        },
+                        "color": "#FF3621"
+                      },
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "Unknown"
+                          }
+                        },
+                        "color": "#FFAB00"
+                      }
+                    ]
+                  },
+                  "displayName": "converted_status"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Latest status",
+                "showDescription": true,
+                "description": "As of last evaluation"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "de359612",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "e8dd7ecc",
+                  "fields": [
+                    {
+                      "name": "evaluated_at",
+                      "expression": "`evaluated_at`"
+                    },
+                    {
+                      "name": "converted_status",
+                      "expression": "`converted_status`"
+                    },
+                    {
+                      "name": "hours_since_last_update",
+                      "expression": "`hours_since_last_update`"
+                    },
+                    {
+                      "name": "predicted_update_threshold",
+                      "expression": "`predicted_update_threshold`"
+                    },
+                    {
+                      "name": "last_data_update_timestamp",
+                      "expression": "`last_data_update_timestamp`"
+                    },
+                    {
+                      "name": "predicted_update_threshold_timestamp",
+                      "expression": "`predicted_update_threshold_timestamp`"
+                    },
+                    {
+                      "name": "actual_latency_hours",
+                      "expression": "`actual_latency_hours`"
+                    },
+                    {
+                      "name": "predicted_latency_threshold",
+                      "expression": "`predicted_latency_threshold`"
+                    },
+                    {
+                      "name": "last_event_timestamp",
+                      "expression": "`last_event_timestamp`"
+                    },
+                    {
+                      "name": "predicted_event_timestamp",
+                      "expression": "`predicted_event_timestamp`"
+                    },
+                    {
+                      "name": "error_message",
+                      "expression": "`error_message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "evaluated_at",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm:ss.SSS",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 3,
+                    "title": "evaluated_at",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "evaluated_at"
+                  },
+                  {
+                    "fieldName": "converted_status",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 4,
+                    "title": "status",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "cellFormat": {
+                      "default": {
+                        "foregroundColor": null
+                      },
+                      "rules": [
+                        {
+                          "if": {
+                            "column": "converted_status",
+                            "fn": "=",
+                            "literal": "Healthy"
+                          },
+                          "value": {
+                            "foregroundColor": "#00A972"
+                          }
+                        },
+                        {
+                          "if": {
+                            "column": "converted_status",
+                            "fn": "=",
+                            "literal": "Unhealthy"
+                          },
+                          "value": {
+                            "foregroundColor": "#FF3621"
+                          }
+                        },
+                        {
+                          "if": {
+                            "column": "converted_status",
+                            "fn": "=",
+                            "literal": "Unknown"
+                          },
+                          "value": {
+                            "foregroundColor": "#FFAB00"
+                          }
+                        }
+                      ]
+                    },
+                    "displayName": "converted_status"
+                  },
+                  {
+                    "fieldName": "hours_since_last_update",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 6,
+                    "title": "hours_since_last_update",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "hours_since_last_update"
+                  },
+                  {
+                    "fieldName": "predicted_update_threshold",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "float",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 7,
+                    "title": "predicted_update_threshold",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "predicted_update_threshold"
+                  },
+                  {
+                    "fieldName": "last_data_update_timestamp",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm:ss.SSS",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 8,
+                    "title": "last_data_update_timestamp",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "last_data_update_timestamp"
+                  },
+                  {
+                    "fieldName": "predicted_update_threshold_timestamp",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm:ss.SSS",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 9,
+                    "title": "predicted_update_threshold_timestamp",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "predicted_update_threshold_timestamp"
+                  },
+                  {
+                    "fieldName": "actual_latency_hours",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 10,
+                    "title": "actual_latency_hours",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "actual_latency_hours"
+                  },
+                  {
+                    "fieldName": "predicted_latency_threshold",
+                    "numberFormat": "0.00",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 11,
+                    "title": "predicted_latency_threshold",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "predicted_latency_threshold"
+                  },
+                  {
+                    "fieldName": "last_event_timestamp",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm:ss.SSS",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 12,
+                    "title": "last_event_timestamp",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "last_event_timestamp"
+                  },
+                  {
+                    "fieldName": "predicted_event_timestamp",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm:ss.SSS",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 14,
+                    "title": "predicted_event_timestamp",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "predicted_event_timestamp"
+                  },
+                  {
+                    "fieldName": "error_message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 16,
+                    "title": "error_message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "error_message"
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "catalog",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 0,
+                  "title": "catalog",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "schema",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 1,
+                  "title": "schema",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "table_name",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 2,
+                  "title": "table_name",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "status",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 5,
+                  "title": "status",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false,
+                  "cellFormat": {
+                    "default": {
+                      "foregroundColor": null
+                    },
+                    "rules": [
+                      {
+                        "if": {
+                          "column": "status",
+                          "fn": "=",
+                          "literal": "Healthy"
+                        },
+                        "value": {
+                          "foregroundColor": "#00A972"
+                        }
+                      },
+                      {
+                        "if": {
+                          "column": "status",
+                          "fn": "=",
+                          "literal": "Unhealthy"
+                        },
+                        "value": {
+                          "foregroundColor": "#FF3621"
+                        }
+                      },
+                      {
+                        "if": {
+                          "column": "status",
+                          "fn": "=",
+                          "literal": "Unknown"
+                        },
+                        "value": {
+                          "foregroundColor": "#FFAB00"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "actual_latency_hours_unformatted",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 13,
+                  "title": "actual_latency_hours_unformatted",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "numberFormat": "0.00",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "predicted_latency_threshold_unformatted",
+                  "type": "float",
+                  "displayAs": "number",
+                  "order": 15,
+                  "title": "predicted_latency_threshold_unformatted",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Freshness Incident Log"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "0bfe5fc9",
+            "textbox_spec": "## Completeness\nMonitors a table's row volume. This table is considered complete if the row volume in the last 24 hours is above the predicted threshold. "
+          },
+          "position": {
+            "x": 0,
+            "y": 23,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "37550752",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "3d04b663",
+                  "fields": [
+                    {
+                      "name": "evaluated_at",
+                      "expression": "`evaluated_at`"
+                    },
+                    {
+                      "name": "actual_24_hour_row_volume",
+                      "expression": "`actual_24_hour_row_volume`"
+                    },
+                    {
+                      "name": "predicted_row_volume_threshold",
+                      "expression": "`predicted_row_volume_threshold`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "combo",
+              "encodings": {
+                "x": {
+                  "fieldName": "evaluated_at",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "evaluated_at"
+                },
+                "y": {
+                  "primary": {
+                    "fields": [
+                      {
+                        "fieldName": "actual_24_hour_row_volume",
+                        "displayName": "row volume in last 24 hours"
+                      }
+                    ]
+                  },
+                  "secondary": {
+                    "fields": [
+                      {
+                        "fieldName": "predicted_row_volume_threshold",
+                        "displayName": "predicted row volume threshold"
+                      }
+                    ]
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "mark": {
+                "colors": [
+                  "#077A9D",
+                  "#FF3621"
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Completeness over time"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 25,
+            "width": 4,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "e142ffee",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "de30c6fb",
+                  "fields": [
+                    {
+                      "name": "evaluated_at",
+                      "expression": "`evaluated_at`"
+                    },
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    },
+                    {
+                      "name": "actual_24_hour_row_volume",
+                      "expression": "`actual_24_hour_row_volume`"
+                    },
+                    {
+                      "name": "predicted_row_volume_threshold",
+                      "expression": "`predicted_row_volume_threshold`"
+                    },
+                    {
+                      "name": "error_message",
+                      "expression": "`error_message`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "evaluated_at",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm:ss.SSS",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 3,
+                    "title": "evaluated_at",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "evaluated_at"
+                  },
+                  {
+                    "fieldName": "status",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 5,
+                    "title": "status",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "cellFormat": {
+                      "default": {
+                        "foregroundColor": null
+                      },
+                      "rules": [
+                        {
+                          "if": {
+                            "column": "status",
+                            "fn": "=",
+                            "literal": "Healthy"
+                          },
+                          "value": {
+                            "foregroundColor": "#00A972"
+                          }
+                        },
+                        {
+                          "if": {
+                            "column": "status",
+                            "fn": "=",
+                            "literal": "Unhealthy"
+                          },
+                          "value": {
+                            "foregroundColor": "#FF3621"
+                          }
+                        },
+                        {
+                          "if": {
+                            "column": "status",
+                            "fn": "=",
+                            "literal": "Unknown"
+                          },
+                          "value": {
+                            "foregroundColor": "#FFAB00"
+                          }
+                        }
+                      ]
+                    },
+                    "displayName": "status"
+                  },
+                  {
+                    "fieldName": "actual_24_hour_row_volume",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 7,
+                    "title": "row_volume_in_last_24_hours",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "actual_24_hour_row_volume"
+                  },
+                  {
+                    "fieldName": "predicted_row_volume_threshold",
+                    "numberFormat": "0",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "integer",
+                    "displayAs": "number",
+                    "visible": true,
+                    "order": 8,
+                    "title": "predicted_row_volume_threshold",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "predicted_row_volume_threshold"
+                  },
+                  {
+                    "fieldName": "error_message",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "string",
+                    "displayAs": "string",
+                    "visible": true,
+                    "order": 9,
+                    "title": "error_message",
+                    "allowSearch": false,
+                    "alignContent": "left",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "error_message"
+                  }
+                ]
+              },
+              "invisibleColumns": [
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "catalog",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 0,
+                  "title": "catalog",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "schema",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 1,
+                  "title": "schema",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "table_name",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 2,
+                  "title": "table_name",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "converted_status",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 4,
+                  "title": "status",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false,
+                  "cellFormat": {
+                    "default": {
+                      "foregroundColor": null
+                    },
+                    "rules": [
+                      {
+                        "if": {
+                          "column": "converted_status",
+                          "fn": "=",
+                          "literal": "Complete"
+                        },
+                        "value": {
+                          "foregroundColor": "#00A972"
+                        }
+                      },
+                      {
+                        "if": {
+                          "column": "converted_status",
+                          "fn": "=",
+                          "literal": "Incomplete"
+                        },
+                        "value": {
+                          "foregroundColor": "#FF3621"
+                        }
+                      },
+                      {
+                        "if": {
+                          "column": "converted_status",
+                          "fn": "=",
+                          "literal": "Unknown"
+                        },
+                        "value": {
+                          "foregroundColor": "#FFAB00"
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "quality_check_type",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 6,
+                  "title": "quality_check_type",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
+              "allowHTMLByDefault": false,
+              "itemsPerPage": 25,
+              "paginationSize": "default",
+              "condensed": true,
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Completeness Incident Log"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 29,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "e6ec7b70",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d8053811",
+                  "fields": [
+                    {
+                      "name": "converted_status",
+                      "expression": "`converted_status`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "converted_status",
+                  "style": {
+                    "rules": [
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "Complete"
+                          }
+                        },
+                        "color": "#00A972"
+                      },
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "Incomplete"
+                          }
+                        },
+                        "color": "#FF3621"
+                      },
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "Unknown"
+                          }
+                        },
+                        "color": "#FFAB00"
+                      }
+                    ]
+                  },
+                  "displayName": "converted_status"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Latest status",
+                "showDescription": true,
+                "description": "As of last evaluation"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 25,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f4772f6b",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d8053811",
+                  "fields": [
+                    {
+                      "name": "actual_24_hour_row_volume",
+                      "expression": "`actual_24_hour_row_volume`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "actual_24_hour_row_volume",
+                  "displayName": "actual_24_hour_row_volume"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Row volume in the last 24 hours",
+                "showDescription": true,
+                "description": "As of last evaluation"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 27,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "1f962745",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "6503836f",
+                  "fields": [
+                    {
+                      "name": "evaluated_at",
+                      "expression": "`evaluated_at`"
+                    },
+                    {
+                      "name": "actual_latency_hours_unformatted",
+                      "expression": "`actual_latency_hours_unformatted`"
+                    },
+                    {
+                      "name": "predicted_latency_threshold_unformatted",
+                      "expression": "`predicted_latency_threshold_unformatted`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 1,
+              "widgetType": "combo",
+              "encodings": {
+                "x": {
+                  "fieldName": "evaluated_at",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "evaluated_at"
+                },
+                "y": {
+                  "primary": {
+                    "fields": []
+                  },
+                  "secondary": {
+                    "fields": [
+                      {
+                        "fieldName": "actual_latency_hours_unformatted",
+                        "displayName": "actual latency (hours)"
+                      },
+                      {
+                        "fieldName": "predicted_latency_threshold_unformatted",
+                        "displayName": "predicted latency threshold"
+                      }
+                    ]
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "hideTitle": false,
+                    "title": "Hours"
+                  }
+                }
+              },
+              "mark": {
+                "colors": [
+                  "#077A9D",
+                  "#FF3621",
+                  "#FF3621",
+                  "#AB4057",
+                  "#99DDB4",
+                  "#FCA4A1",
+                  "#919191",
+                  "#BF7080"
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Latency freshness over time"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 11,
+            "width": 4,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "386b2b14",
+            "textbox_spec": "## Data Latency\nShows how recently events have arrived in the table.\\\nThis section will be empty if no timestamp column has been specified. Details on Data Latency monitoring can be found [here.](https://docs.databricks.com/gcp/en/lakehouse-monitoring/anomaly-detection#customize-freshness-and-completeness-evaluations)"
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "69d3aa5f",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "833aad0a",
+                  "fields": [
+                    {
+                      "name": "actual_latency_hours",
+                      "expression": "`actual_latency_hours`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "actual_latency_hours",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  },
+                  "style": {
+                    "rules": [
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "N/A"
+                          }
+                        },
+                        "color": "#919191"
+                      }
+                    ]
+                  },
+                  "displayName": "actual_latency_hours"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Actual latency (hours)",
+                "showDescription": true,
+                "description": "As of last evaluation"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "d00993d1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "833aad0a",
+                  "fields": [
+                    {
+                      "name": "last_event_timestamp",
+                      "expression": "`last_event_timestamp`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "last_event_timestamp",
+                  "style": {
+                    "rules": [
+                      {
+                        "condition": {
+                          "operator": "=",
+                          "operand": {
+                            "type": "data-value",
+                            "value": "N/A"
+                          }
+                        },
+                        "color": "#919191"
+                      }
+                    ]
+                  },
+                  "displayName": "last_event_timestamp"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Last event ",
+                "showDescription": true,
+                "description": "As of last evaluation"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "9d146eba",
+            "queries": [
+              {
+                "name": "dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1d6fae3e3261e998d6b2_table_name",
+                "query": {
+                  "datasetName": "51c2afcd",
+                  "fields": [
+                    {
+                      "name": "table_name",
+                      "expression": "`table_name`"
+                    },
+                    {
+                      "name": "table_name_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cd5bf2b4abaf2822f3a_table_name",
+                "query": {
+                  "datasetName": "e8dd7ecc",
+                  "parameters": [
+                    {
+                      "name": "table_name",
+                      "keyword": "table_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c8cba3e57e560efe80b_table_name",
+                "query": {
+                  "datasetName": "833aad0a",
+                  "parameters": [
+                    {
+                      "name": "table_name",
+                      "keyword": "table_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1beb81acdbea5cfeb4e4_table_name",
+                "query": {
+                  "datasetName": "de30c6fb",
+                  "parameters": [
+                    {
+                      "name": "table_name",
+                      "keyword": "table_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1b8a9573debb92bac20e_table_name",
+                "query": {
+                  "datasetName": "d8053811",
+                  "parameters": [
+                    {
+                      "name": "table_name",
+                      "keyword": "table_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c1bbd8280dc43b58817_table_name",
+                "query": {
+                  "datasetName": "3d04b663",
+                  "parameters": [
+                    {
+                      "name": "table_name",
+                      "keyword": "table_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cf7b6e832a2c9b24055_table_name",
+                "query": {
+                  "datasetName": "6503836f",
+                  "parameters": [
+                    {
+                      "name": "table_name",
+                      "keyword": "table_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "table_name",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cd5bf2b4abaf2822f3a_table_name"
+                  },
+                  {
+                    "parameterName": "table_name",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c8cba3e57e560efe80b_table_name"
+                  },
+                  {
+                    "fieldName": "table_name",
+                    "displayName": "table_name",
+                    "queryName": "dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1d6fae3e3261e998d6b2_table_name"
+                  },
+                  {
+                    "parameterName": "table_name",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1beb81acdbea5cfeb4e4_table_name"
+                  },
+                  {
+                    "parameterName": "table_name",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1b8a9573debb92bac20e_table_name"
+                  },
+                  {
+                    "parameterName": "table_name",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c1bbd8280dc43b58817_table_name"
+                  },
+                  {
+                    "parameterName": "table_name",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cf7b6e832a2c9b24055_table_name"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Table name"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "7075ee21",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cd5bf2b4abaf2822f3a_evaluated_time",
+                "query": {
+                  "datasetName": "e8dd7ecc",
+                  "parameters": [
+                    {
+                      "name": "evaluated_time",
+                      "keyword": "evaluated_time"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1beb81acdbea5cfeb4e4_evaluated_time",
+                "query": {
+                  "datasetName": "de30c6fb",
+                  "parameters": [
+                    {
+                      "name": "evaluated_time",
+                      "keyword": "evaluated_time"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1b8a9573debb92bac20e_evaluated_time",
+                "query": {
+                  "datasetName": "d8053811",
+                  "parameters": [
+                    {
+                      "name": "evaluated_time",
+                      "keyword": "evaluated_time"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c8cba3e57e560efe80b_evaluated_time",
+                "query": {
+                  "datasetName": "833aad0a",
+                  "parameters": [
+                    {
+                      "name": "evaluated_time",
+                      "keyword": "evaluated_time"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c1bbd8280dc43b58817_evaluated_time",
+                "query": {
+                  "datasetName": "3d04b663",
+                  "parameters": [
+                    {
+                      "name": "evaluated_time",
+                      "keyword": "evaluated_time"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cf7b6e832a2c9b24055_evaluated_time",
+                "query": {
+                  "datasetName": "6503836f",
+                  "parameters": [
+                    {
+                      "name": "evaluated_time",
+                      "keyword": "evaluated_time"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "evaluated_time",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cd5bf2b4abaf2822f3a_evaluated_time"
+                  },
+                  {
+                    "parameterName": "evaluated_time",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1beb81acdbea5cfeb4e4_evaluated_time"
+                  },
+                  {
+                    "parameterName": "evaluated_time",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1b8a9573debb92bac20e_evaluated_time"
+                  },
+                  {
+                    "parameterName": "evaluated_time",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c8cba3e57e560efe80b_evaluated_time"
+                  },
+                  {
+                    "parameterName": "evaluated_time",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c1bbd8280dc43b58817_evaluated_time"
+                  },
+                  {
+                    "parameterName": "evaluated_time",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cf7b6e832a2c9b24055_evaluated_time"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Evaluated at"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "table-quality-details-logging-table-name",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1b8a9573debb92bac20e_logging_table",
+                "query": {
+                  "datasetName": "d8053811",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c8cba3e57e560efe80b_logging_table",
+                "query": {
+                  "datasetName": "833aad0a",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1beb81acdbea5cfeb4e4_logging_table",
+                "query": {
+                  "datasetName": "de30c6fb",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c1bbd8280dc43b58817_logging_table",
+                "query": {
+                  "datasetName": "3d04b663",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cd5bf2b4abaf2822f3a_logging_table",
+                "query": {
+                  "datasetName": "e8dd7ecc",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cf7b6e832a2c9b24055_logging_table",
+                "query": {
+                  "datasetName": "6503836f",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1d6fae3e3261e998d6b2_logging_table",
+                "query": {
+                  "datasetName": "51c2afcd",
+                  "parameters": [
+                    {
+                      "name": "logging_table",
+                      "keyword": "logging_table"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1b8a9573debb92bac20e_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c8cba3e57e560efe80b_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1beb81acdbea5cfeb4e4_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1c1bbd8280dc43b58817_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cd5bf2b4abaf2822f3a_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1cf7b6e832a2c9b24055_logging_table"
+                  },
+                  {
+                    "parameterName": "logging_table",
+                    "queryName": "parameter_dashboards/01f010140e2d1fa2a01fa52c4455bcbd/datasets/01f010140e2e1d6fae3e3261e998d6b2_logging_table"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Logging table name"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 4,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "bead1c07",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1652eb92",
+                  "fields": [
+                    {
+                      "name": "warning",
+                      "expression": "`warning`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "warning",
+                  "style": {
+                    "color": "#FFAB00"
+                  },
+                  "displayName": "warning"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 1
+          }
+        }
+      ]
+    }
+  ]
+}
